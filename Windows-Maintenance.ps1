@@ -121,12 +121,16 @@ function Clear-TemporaryFiles {
                 $beforeSize = (Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | 
                               Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
                 
+                if ($null -eq $beforeSize) { $beforeSize = 0 }
+                
                 Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | 
                     Where-Object { !$_.PSIsContainer } | 
                     Remove-Item -Force -ErrorAction SilentlyContinue
                 
                 $afterSize = (Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | 
                              Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
+                
+                if ($null -eq $afterSize) { $afterSize = 0 }
                 
                 $freed = ($beforeSize - $afterSize) / 1MB
                 $totalFreed += $freed
@@ -190,7 +194,10 @@ function Invoke-SystemFileCheck {
     
     try {
         Write-Log "Exécution de SFC /scannow (cela peut prendre 15-30 minutes)..." -Level INFO
-        $sfcResult = & sfc /scannow
+        $sfcOutput = & sfc /scannow 2>&1
+        
+        # Log the SFC output
+        $sfcOutput | ForEach-Object { Write-Log $_ -Level INFO }
         
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Vérification SFC terminée avec succès" -Level SUCCESS
@@ -213,13 +220,16 @@ function Invoke-DISMRepair {
     
     try {
         Write-Log "Vérification de l'intégrité de l'image..." -Level INFO
-        $dismCheck = & DISM /Online /Cleanup-Image /CheckHealth
+        $dismCheckOutput = & DISM /Online /Cleanup-Image /CheckHealth 2>&1
+        $dismCheckOutput | ForEach-Object { Write-Log $_ -Level INFO }
         
         Write-Log "Scan de l'état de l'image..." -Level INFO
-        $dismScan = & DISM /Online /Cleanup-Image /ScanHealth
+        $dismScanOutput = & DISM /Online /Cleanup-Image /ScanHealth 2>&1
+        $dismScanOutput | ForEach-Object { Write-Log $_ -Level INFO }
         
         Write-Log "Réparation de l'image (cela peut prendre du temps)..." -Level INFO
-        $dismRestore = & DISM /Online /Cleanup-Image /RestoreHealth
+        $dismRestoreOutput = & DISM /Online /Cleanup-Image /RestoreHealth 2>&1
+        $dismRestoreOutput | ForEach-Object { Write-Log $_ -Level INFO }
         
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Opérations DISM terminées avec succès" -Level SUCCESS
