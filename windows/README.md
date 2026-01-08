@@ -1,9 +1,9 @@
-# Windows Tools
+# Outils pour Windows
 
-This directory contains tools and scripts designed for Windows systems.
+Ce répertoire contient des outils et des scripts conçus pour les systèmes Windows.
 
 ## Structure
 
-- **fichiers_batch/**: Batch files (.bat, .cmd) for Windows
-- **scripts_powershell/**: PowerShell scripts (.ps1) for Windows
-- **python/**: Python scripts and tools for Windows
+- **fichiers_batch/** : Fichiers Batch (.bat, .cmd) pour Windows
+- **scripts_powershell/** : Scripts PowerShell (.ps1) pour Windows
+- **python/** : Scripts Python et outils pour Windows
