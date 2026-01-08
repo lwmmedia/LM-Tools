@@ -4,7 +4,7 @@
 # =====================================================
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   Top 10 Processus par Utilisation Memoire" -ForegroundColor Cyan
+Write-Host "   Top 10 Processus par Utilisation Mémoire" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

@@ -6,7 +6,7 @@ REM =====================================================
 
 echo.
 echo ========================================
-echo    Informations Systeme Windows
+echo    Informations Système Windows
 echo ========================================
 echo.
 
