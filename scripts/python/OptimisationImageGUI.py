@@ -21,7 +21,7 @@ Usage :
 - Lancer ce script directement pour ouvrir l'interface utilisateur (GUI).
 - Choisir les répertoires source et destination, et configurer les options de traitement.
 
-Auteur : [Votre Nom]
+Auteur : Laurent MARQUET avec Copilot GitHub
 Date : 2026
 """
 
