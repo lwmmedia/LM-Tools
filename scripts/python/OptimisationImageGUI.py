@@ -1,14 +1,47 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Optimiseur d'images JPG avec une interface graphique (GUI).
+
+Ce script permet de traiter des fichiers JPG et JPEG dans un dossier source, en offrant des fonctionnalités telles que :
+- Conversion en différents formats d'image (JPEG et WebP).
+- Redimensionnement des images en fonction de la plus longue bordure.
+- Ajustement de la qualité de compression des images JPEG.
+- Structure répliquée des dossiers dans un dossier de sortie.
+- Support des métadonnées comme EXIF et ICC.
+
+Utilisateur cible :
+- Toute personne ayant besoin d'optimiser des collections de photos de manière rapide et efficace avec une interface simple.
+
+Dépendances :
+- tkinter (standard dans les distributions Python) pour la GUI.
+- Pillow pour traitement des images (https://python-pillow.org/)
+
+Usage :
+- Lancer ce script directement pour ouvrir l'interface utilisateur (GUI).
+- Choisir les répertoires source et destination, et configurer les options de traitement.
+
+Auteur : Laurent MARQUET avec Copilot GitHub
+Date : 2026
+"""
 
 import os
-import sys
 import threading
 from pathlib import Path
 from datetime import datetime
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from tkinter.scrolledtext import ScrolledText
+from pathlib import Path
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 
-from PIL import Image, ImageOps
+try:
+    from PIL import Image
+except ImportError:
+    messagebox.showerror(
+        "Dépendance manquante",
+        "La bibliothèque Pillow n'est pas installée.\n\n"
+        "Installez-la avec : pip install Pillow"
+    )
+    exit(1)
 
 APP_TITLE = "Optimiseur d'images JPG - GUI"
 SUPPORTED_EXTS = (".jpg", ".jpeg", ".JPG", ".JPEG")
@@ -43,6 +76,93 @@ class ImageOptimizerGUI(tk.Tk):
         # Cadre Dossiers
         f_paths = ttk.LabelFrame(self, text="Dossiers")
         f_paths.pack(fill="x", **pad)
+
+        ttk.Label(f_paths, text="Source :").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        ttk.Entry(f_paths, textvariable=self.var_src, width=50).grid(
+            row=0, column=1, sticky="ew", padx=5, pady=5
+        )
+        ttk.Button(f_paths, text="Parcourir...", command=self.browse_src).grid(
+            row=0, column=2, padx=5, pady=5
+        )
+
+        ttk.Label(f_paths, text="Destination :").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        ttk.Entry(f_paths, textvariable=self.var_dst, width=50).grid(
+            row=1, column=1, sticky="ew", padx=5, pady=5
+        )
+        ttk.Button(f_paths, text="Parcourir...", command=self.browse_dst).grid(
+            row=1, column=2, padx=5, pady=5
+        )
+
+        f_paths.columnconfigure(1, weight=1)
+
+        # Cadre Options
+        f_opts = ttk.LabelFrame(self, text="Options de traitement")
+        f_opts.pack(fill="x", **pad)
+
+        ttk.Label(f_opts, text="Qualité JPEG :").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        quality_spin = ttk.Spinbox(
+            f_opts, from_=1, to=100, textvariable=self.var_quality, width=10
+        )
+        quality_spin.grid(row=0, column=1, sticky="w", padx=5, pady=5)
+
+        ttk.Checkbutton(
+            f_opts, text="Redimensionner les images", variable=self.var_resize
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+        ttk.Label(f_opts, text="Taille max (bordure longue) :").grid(
+            row=2, column=0, sticky="w", padx=5, pady=5
+        )
+        ttk.Spinbox(
+            f_opts, from_=100, to=10000, textvariable=self.var_max_side, width=10
+        ).grid(row=2, column=1, sticky="w", padx=5, pady=5)
+
+        ttk.Checkbutton(
+            f_opts, text="Convertir en WebP", variable=self.var_convert_webp
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+        ttk.Checkbutton(
+            f_opts, text="Conserver JPEG en cas de conversion WebP", variable=self.var_keep_jpeg
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=20, pady=5)
+
+        ttk.Checkbutton(
+            f_opts, text="Écraser les fichiers existants", variable=self.var_overwrite
+        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+        # Cadre Boutons
+        f_btns = ttk.Frame(self)
+        f_btns.pack(fill="x", **pad)
+
+        self.btn_start = ttk.Button(
+            f_btns, text="Démarrer le traitement", command=self.start_processing
+        )
+        self.btn_start.pack(side="left", padx=5)
+
+        self.btn_stop = ttk.Button(
+            f_btns, text="Arrêter", command=self.stop_processing, state="disabled"
+        )
+        self.btn_stop.pack(side="left", padx=5)
+
+        # Barre de progression
+        f_progress = ttk.Frame(self)
+        f_progress.pack(fill="x", **pad)
+
+        ttk.Label(f_progress, textvariable=self.var_progress_text).pack(
+            side="left", padx=5
+        )
+
+        self.progress_bar = ttk.Progressbar(
+            f_progress, mode="indeterminate", length=400
+        )
+        self.progress_bar.pack(side="left", fill="x", expand=True, padx=5)
+
+        # Journal (log)
+        f_log = ttk.LabelFrame(self, text="Journal")
+        f_log.pack(fill="both", expand=True, **pad)
+
+        self.log_text = scrolledtext.ScrolledText(
+            f_log, height=12, state="disabled", wrap="word"
+        )
+        self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
 
         row = 0
         ttk.Label(f_paths, text="Dossier source :").grid(row=row, column=0, sticky="w", padx=8, pady=6)
@@ -116,236 +236,187 @@ class ImageOptimizerGUI(tk.Tk):
 
     # ------------- Actions -------------
     def browse_src(self):
-        path = filedialog.askdirectory(title="Choisir le dossier source")
-        if path:
-            self.var_src.set(Path(path).as_posix())
+        """Ouvre un dialogue pour sélectionner le dossier source d'images."""
+        folder = filedialog.askdirectory(title="Sélectionner le dossier source")
+        if folder:
+            self.var_src.set(folder)
+            self._log(f"Dossier source sélectionné : {folder}")
 
     def browse_dst(self):
-        path = filedialog.askdirectory(title="Choisir le dossier de sortie")
-        if path:
-            self.var_dst.set(Path(path).as_posix())
-
-    def open_dst(self):
-        dst = self.var_dst.get().strip()
-        if not dst:
-            messagebox.showinfo("Information", "Veuillez d'abord sélectionner un dossier de sortie.")
-            return
-        p = Path(dst)
-        if not p.exists():
-            messagebox.showwarning("Attention", "Le dossier de sortie n'existe pas encore.")
-            return
-        try:
-            if sys.platform.startswith("win"):
-                os.startfile(p)  # type: ignore
-            elif sys.platform == "darwin":
-                os.system(f'open "{p}"')
-            else:
-                os.system(f'xdg-open "{p}"')
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Impossible d'ouvrir le dossier : {e}")
+        """Ouvre un dialogue pour sélectionner le dossier de destination."""
+        folder = filedialog.askdirectory(title="Sélectionner le dossier de destination")
+        if folder:
+            self.var_dst.set(folder)
+            self._log(f"Dossier de destination sélectionné : {folder}")
 
     def start_processing(self):
+        """Démarre le traitement des images dans un thread séparé."""
         src = self.var_src.get().strip()
         dst = self.var_dst.get().strip()
+
         if not src or not dst:
-            messagebox.showerror("Erreur", "Veuillez sélectionner un dossier source et un dossier de sortie.")
+            messagebox.showwarning(
+                "Champs manquants",
+                "Veuillez sélectionner les dossiers source et destination."
+            )
             return
 
-        src_p = Path(src)
-        dst_p = Path(dst)
-        if not src_p.exists() or not src_p.is_dir():
-            messagebox.showerror("Erreur", "Le dossier source est invalide.")
-            return
-        if src_p.resolve() == dst_p.resolve():
-            messagebox.showerror("Erreur", "Le dossier de sortie doit être différent du dossier source.")
+        if not os.path.isdir(src):
+            messagebox.showerror("Erreur", f"Le dossier source n'existe pas : {src}")
             return
 
-        dst_p.mkdir(parents=True, exist_ok=True)
-
-        # Setup UI state
+        # Réinitialiser l'événement d'arrêt
         self.stop_event.clear()
-        self.btn_start.config(state="disabled")
-        self.btn_cancel.config(state="normal")
-        self.progress["value"] = 0
-        self.var_progress_text.set("Préparation…")
-        self.log("Démarrage du traitement…")
 
-        # Lancer le thread de travail
-        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
+        # Désactiver le bouton de démarrage
+        self.btn_start.config(state="disabled")
+        self.btn_stop.config(state="normal")
+
+        # Démarrer la barre de progression
+        self.progress_bar.start(10)
+        self.var_progress_text.set("Traitement en cours...")
+
+        # Lancer le thread de traitement
+        self.worker_thread = threading.Thread(target=self._process_images, daemon=True)
         self.worker_thread.start()
 
-    def cancel_processing(self):
-        if self.worker_thread and self.worker_thread.is_alive():
-            self.stop_event.set()
-            self.log("Annulation demandée…")
+    def stop_processing(self):
+        """Arrête le traitement en cours."""
+        self.stop_event.set()
+        self._log("Arrêt demandé par l'utilisateur...")
 
-    def _worker(self):
-        try:
-            self._process_images()
-        except Exception as e:
-            self.log(f"[ERREUR] {e}")
-            messagebox.showerror("Erreur fatale", str(e))
-        finally:
-            # Rétablir l'UI
-            self.btn_start.config(state="normal")
-            self.btn_cancel.config(state="disabled")
-
-    # ----------- Cœur du traitement -----------
     def _process_images(self):
-        src_p = Path(self.var_src.get().strip())
-        dst_p = Path(self.var_dst.get().strip())
-        quality = int(self.var_quality.get())
-        do_resize = bool(self.var_resize.get())
-        max_side = int(self.var_max_side.get()) if self.var_max_side.get() > 0 else 0
-        to_webp = bool(self.var_convert_webp.get())
-        keep_jpeg = bool(self.var_keep_jpeg.get())
-        overwrite = bool(self.var_overwrite.get())
+        """Traite les images dans le dossier source.
 
-        # Lister les fichiers à traiter
-        files = []
-        for root, _, filenames in os.walk(src_p):
-            for name in filenames:
-                if name.endswith(SUPPORTED_EXTS):
-                    files.append(Path(root) / name)
+        Cette méthode parcourt récursivement le dossier source, identifie les fichiers JPG/JPEG,
+        et applique les options de traitement configurées (redimensionnement, compression, conversion).
+        """
+        src_path = Path(self.var_src.get())
+        dst_path = Path(self.var_dst.get())
 
-        total = len(files)
-        if total == 0:
-            self.log("Aucune image JPG/JPEG trouvée.")
-            self.var_progress_text.set("0 / 0")
+        quality = self.var_quality.get()
+        resize = self.var_resize.get()
+        max_side = self.var_max_side.get()
+        convert_webp = self.var_convert_webp.get()
+        overwrite = self.var_overwrite.get()
+        keep_jpeg = self.var_keep_jpeg.get()
+
+        self._log("=== Début du traitement ===")
+        self._log(f"Source : {src_path}")
+        self._log(f"Destination : {dst_path}")
+        self._log(f"Qualité JPEG : {quality}")
+        self._log(f"Redimensionner : {resize} (max={max_side}px)")
+        self._log(f"Convertir en WebP : {convert_webp}")
+        self._log(f"Conserver JPEG : {keep_jpeg}")
+        self._log("")
+
+        # Compter les fichiers à traiter
+        image_files = []
+        for ext in SUPPORTED_EXTS:
+            image_files.extend(src_path.rglob(f"*{ext}"))
+
+        total_files = len(image_files)
+        self._log(f"Fichiers trouvés : {total_files}")
+
+        if total_files == 0:
+            self._log("Aucun fichier JPG/JPEG trouvé.")
+            self._finish_processing()
             return
-
-        self.progress["maximum"] = total
-        self.log(f"{total} fichier(s) à traiter.")
 
         processed = 0
-        for src_file in files:
+        skipped = 0
+        errors = 0
+
+        for img_path in image_files:
             if self.stop_event.is_set():
-                self.log("Traitement annulé par l'utilisateur.")
-                self.var_progress_text.set(f"{processed} / {total} (annulé)")
+                self._log("Traitement interrompu.")
                 break
 
-            # Chemin relatif pour répliquer l'arborescence
-            rel = src_file.relative_to(src_p)
-            out_jpg = (dst_p / rel).with_suffix(".jpg")
-            out_webp = (dst_p / rel).with_suffix(".webp")
-
-            # Créer le sous-dossier si nécessaire
-            out_jpg.parent.mkdir(parents=True, exist_ok=True)
-
-            # Saut si pas overwrite et fichier existe
-            if not overwrite:
-                # Cas 1: si on garde JPEG
-                if keep_jpeg and out_jpg.exists() and not to_webp:
-                    self.log(f"[SKIP] Existant (JPEG) : {out_jpg}")
-                    processed += 1
-                    self._update_progress(processed, total)
-                    continue
-                # Cas 2: si WebP seul
-                if to_webp and not keep_jpeg and out_webp.exists():
-                    self.log(f"[SKIP] Existant (WebP) : {out_webp}")
-                    processed += 1
-                    self._update_progress(processed, total)
-                    continue
-                # Cas 3: si WebP + JPEG
-                if to_webp and keep_jpeg and out_jpg.exists() and out_webp.exists():
-                    self.log(f"[SKIP] Existant (JPEG+WebP) : {rel}")
-                    processed += 1
-                    self._update_progress(processed, total)
-                    continue
-
             try:
-                with Image.open(src_file) as im:
-                    # Appliquer orientation EXIF si présente
-                    im = ImageOps.exif_transpose(im)
+                # Calculer le chemin relatif
+                rel_path = img_path.relative_to(src_path)
+                out_dir = dst_path / rel_path.parent
 
-                    # Convertir en RGB (JPEG/WebP attendent RGB)
-                    if im.mode not in ("RGB", "L"):
-                        im = im.convert("RGB")
+                # Créer le dossier de destination si nécessaire
+                out_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Redimensionner si demandé
-                    if do_resize and max_side > 0:
-                        im = self.resize_long_edge(im, max_side)
+                # Charger l'image
+                img = Image.open(img_path)
 
-                    # Récupérer métadonnées utiles
-                    exif_bytes = im.info.get("exif")
-                    icc = im.info.get("icc_profile")
+                # Redimensionner si demandé
+                if resize:
+                    width, height = img.size
+                    max_current = max(width, height)
+                    if max_current > max_side:
+                        scale = max_side / max_current
+                        new_width = int(width * scale)
+                        new_height = int(height * scale)
+                        img = img.resize((new_width, new_height), Image.LANCZOS)
+                        self._log(f"  Redimensionné : {img_path.name} ({width}x{height} → {new_width}x{new_height})")
 
-                    # Sauvegarde JPEG (si demandé ou si pas de WebP seul)
-                    if keep_jpeg or not to_webp:
-                        self.save_as_jpeg(im, out_jpg, quality, exif_bytes, icc, overwrite)
+                # Sauvegarder en JPEG
+                if not convert_webp or keep_jpeg:
+                    out_jpeg = out_dir / img_path.name
+                    if out_jpeg.exists() and not overwrite:
+                        self._log(f"  Ignoré (existe déjà) : {out_jpeg}")
+                        skipped += 1
+                    else:
+                        # Préserver les métadonnées EXIF si possible
+                        exif_data = img.info.get("exif", None)
+                        if exif_data:
+                            img.save(out_jpeg, "JPEG", quality=quality, optimize=True, exif=exif_data)
+                        else:
+                            img.save(out_jpeg, "JPEG", quality=quality, optimize=True)
+                        self._log(f"  Traité : {out_jpeg}")
+                        processed += 1
 
-                    # Sauvegarde WebP (si demandé)
-                    if to_webp:
-                        self.save_as_webp(im, out_webp, quality, icc, overwrite)
+                # Convertir en WebP si demandé
+                if convert_webp:
+                    out_webp = out_dir / (img_path.stem + ".webp")
+                    if out_webp.exists() and not overwrite:
+                        self._log(f"  Ignoré (existe déjà) : {out_webp}")
+                        skipped += 1
+                    else:
+                        img.save(out_webp, "WebP", quality=quality, method=6)
+                        self._log(f"  Converti en WebP : {out_webp}")
+                        processed += 1
 
-                self.log(f"[OK] {rel.as_posix()}")
             except Exception as e:
-                self.log(f"[ERREUR] {rel.as_posix()} : {e}")
+                self._log(f"  ERREUR avec {img_path.name} : {e}")
+                errors += 1
 
-            processed += 1
-            self._update_progress(processed, total)
+        self._log("")
+        self._log("=== Traitement terminé ===")
+        self._log(f"Fichiers traités : {processed}")
+        self._log(f"Fichiers ignorés : {skipped}")
+        self._log(f"Erreurs : {errors}")
 
-        if not self.stop_event.is_set():
-            self.var_progress_text.set(f"Terminé : {processed} / {total}")
-            self.log("Traitement terminé.")
+        self._finish_processing()
 
-    def resize_long_edge(self, im: Image.Image, max_side: int) -> Image.Image:
-        w, h = im.size
-        long_side = max(w, h)
-        if long_side <= max_side:
-            return im
-        scale = max_side / float(long_side)
-        new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
-        return im.resize(new_size, Image.LANCZOS)
+    def _finish_processing(self):
+        """Termine le traitement et réinitialise l'interface."""
+        self.progress_bar.stop()
+        self.var_progress_text.set("Terminé.")
+        self.btn_start.config(state="normal")
+        self.btn_stop.config(state="disabled")
 
-    def save_as_jpeg(self, im, path: Path, quality: int, exif_bytes, icc, overwrite: bool):
-        if path.exists() and not overwrite:
-            return
-        save_kwargs = {
-            "format": "JPEG",
-            "quality": int(quality),
-            "optimize": True,
-            "progressive": True,
-            "subsampling": "auto",  # Pillow choisit le meilleur compromis
-        }
-        if exif_bytes:
-            save_kwargs["exif"] = exif_bytes
-        if icc:
-            save_kwargs["icc_profile"] = icc
-        path.parent.mkdir(parents=True, exist_ok=True)
-        im.save(path, **save_kwargs)
+    def _log(self, message):
+        """Ajoute un message au journal de l'interface.
 
-    def save_as_webp(self, im, path: Path, quality: int, icc, overwrite: bool):
-        if path.exists() and not overwrite:
-            return
-        save_kwargs = {
-            "format": "WEBP",
-            "quality": int(quality),
-            "method": 6,  # meilleur ratio
-        }
-        if icc:
-            save_kwargs["icc_profile"] = icc
-        path.parent.mkdir(parents=True, exist_ok=True)
-        # WebP ne supporte pas l'EXIF de la même façon que JPEG ; on conserve surtout l'ICC
-        if im.mode not in ("RGB", "L"):
-            im = im.convert("RGB")
-        im.save(path, **save_kwargs)
+        Args:
+            message (str): Le message à afficher dans le journal.
+        """
+        self.log_text.config(state="normal")
+        self.log_text.insert("end", message + "\n")
+        self.log_text.see("end")
+        self.log_text.config(state="disabled")
 
-    def _update_progress(self, processed: int, total: int):
-        self.progress["value"] = processed
-        self.var_progress_text.set(f"{processed} / {total}")
-        # Force un rafraîchissement UI
-        self.update_idletasks()
-
-    def log(self, msg: str):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.txt_log.insert("end", f"[{timestamp}] {msg}\n")
-        self.txt_log.see("end")
 
 def main():
+    """Point d'entrée principal de l'application."""
     app = ImageOptimizerGUI()
     app.mainloop()
 
+
 if __name__ == "__main__":
     main()
-

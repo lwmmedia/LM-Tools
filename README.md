@@ -11,16 +11,19 @@
 | Outil | Système | Langage | Description |
 | :--- | :--- | :--- | :--- |
 | **Windows Maintenance** | 🪟 Win 10/11 | PowerShell | Maintenance complète : SFC, DISM, nettoyage disque et fichiers temporaires. |
+| **Optimiseur d'images** | 🐍 Multi | Python | Optimisation et conversion d'images JPG/JPEG avec interface graphique. |
 | **System Info (Linux)** | 🐧 Linux | Bash | Affiche l'utilisateur, l'OS, le kernel, l'uptime et l'utilisation des ressources. |
 | **Analyseur de Texte** | 🐍 Multi | Python | Génère des statistiques (lignes, mots, fréquences) sur un fichier texte. |
 | **Calculatrice CLI** | 🐍 Multi | Python | Utilitaire de calcul simple en ligne de commande. |
 
 ## 📂 Structure du Dépôt
 
-Le projet est organisé pour être accessible selon votre préférence (par type de script ou par plateforme) :
+Le projet est organisé de manière simple et claire par type de langage :
 
-* **[`/scripts`](./scripts)** : Dossier principal contenant les scripts classés par langage : [`bash`](./scripts/bash), [`python`](./scripts/python) et [`windows`](./scripts/windows).
-* **[`/linux`](./linux) & [`/windows`](./windows)** : Sections dédiées regroupant les outils spécifiques à chaque système d'exploitation.
+* **[`/scripts`](./scripts)** : Dossier principal contenant tous les scripts classés par langage :
+  * [`bash`](./scripts/bash) : Scripts Linux/Unix (sauvegarde, info système)
+  * [`python`](./scripts/python) : Scripts multi-plateformes (analyse de texte, optimisation d'images)
+  * [`windows`](./scripts/windows) : Scripts Windows (maintenance, utilitaires système)
 * **[`/docs`](./docs)** : Documentation complète, incluant les [guides de démarrage](./docs/guide-demarrage.md) et de [contribution](./docs/contribution.md).
 * **[`/examples`](./examples)** : Fichiers de test (comme [`exemple_texte.txt`](./examples/exemple_texte.txt)) pour essayer les scripts immédiatement.
 
@@ -28,12 +31,16 @@ Le projet est organisé pour être accessible selon votre préférence (par type
 
 1.  **Clonage du dépôt** :
     ```bash
-    git clone [https://github.com/lwmmedia/LM-Tools.git](https://github.com/lwmmedia/LM-Tools.git)
+    git clone https://github.com/lwmmedia/LM-Tools.git
     cd LM-Tools
     ```
-2.  **Maintenance Windows** : Exécutez simplement [`Lancer-Maintenance.bat`](./Lancer-Maintenance.bat) (nécessite des droits administrateur).
-3.  **Scripts Python** : Installez Python 3.6+ et lancez vos scripts via `python nom_du_script.py`.
-4.  **Scripts Bash** : Rendez le script exécutable avec `chmod +x` avant de le lancer.
+2.  **Installation des dépendances Python** :
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Maintenance Windows** : Exécutez [`scripts/windows/Lancer-Maintenance.bat`](./scripts/windows/Lancer-Maintenance.bat) (nécessite des droits administrateur).
+4.  **Scripts Python** : Installez Python 3.6+ et lancez vos scripts via `python scripts/python/nom_du_script.py`.
+5.  **Scripts Bash** : Rendez le script exécutable avec `chmod +x` avant de le lancer.
 
 ## 🛡️ Sécurité et Qualité
 

@@ -1,0 +1,4 @@
+# Dépendances Python pour LM-Tools
+
+# Optimisation d'images (OptimisationImageGUI.py)
+Pillow>=10.0.0
