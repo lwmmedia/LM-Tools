@@ -5,10 +5,7 @@ Bienvenue dans la documentation de LM-Tools.
 ## Table des matières
 
 1. [Guide de démarrage](guide-demarrage.md)
-2. [Scripts Windows](scripts-windows.md)
-3. [Scripts Python](scripts-python.md)
-4. [Scripts Bash](scripts-bash.md)
-5. [Contribution](contribution.md)
+2. [Contribution](contribution.md)
 
 ## Vue d'ensemble
 
