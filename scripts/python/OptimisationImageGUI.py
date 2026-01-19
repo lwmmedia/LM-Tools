@@ -37,12 +37,13 @@ except ImportError:
     messagebox.showerror(
         "Dépendance manquante",
         "La bibliothèque Pillow n'est pas installée.\n\n"
-        "Installez-la avec : pip install Pillow"
+        "Installez-la avec : pip install Pillow",
     )
     exit(1)
 
 APP_TITLE = "Optimiseur d'images JPG - GUI"
 SUPPORTED_EXTS = (".jpg", ".jpeg", ".JPG", ".JPEG")
+
 
 class ImageOptimizerGUI(tk.Tk):
     def __init__(self):
@@ -59,7 +60,9 @@ class ImageOptimizerGUI(tk.Tk):
         self.var_max_side = tk.IntVar(value=1920)
         self.var_convert_webp = tk.BooleanVar(value=False)
         self.var_overwrite = tk.BooleanVar(value=False)
-        self.var_keep_jpeg = tk.BooleanVar(value=True)  # garder JPEG même si conversion WebP activée
+        self.var_keep_jpeg = tk.BooleanVar(
+            value=True
+        )  # garder JPEG même si conversion WebP activée
         self.var_progress_text = tk.StringVar(value="En attente…")
 
         self.stop_event = threading.Event()
@@ -76,13 +79,25 @@ class ImageOptimizerGUI(tk.Tk):
         f_paths.pack(fill="x", **pad)
 
         row = 0
-        ttk.Label(f_paths, text="Dossier source :").grid(row=row, column=0, sticky="w", padx=8, pady=6)
-        ttk.Entry(f_paths, textvariable=self.var_src, width=70).grid(row=row, column=1, sticky="we", padx=8)
-        ttk.Button(f_paths, text="Parcourir…", command=self.browse_src).grid(row=row, column=2, padx=8)
+        ttk.Label(f_paths, text="Dossier source :").grid(
+            row=row, column=0, sticky="w", padx=8, pady=6
+        )
+        ttk.Entry(f_paths, textvariable=self.var_src, width=70).grid(
+            row=row, column=1, sticky="we", padx=8
+        )
+        ttk.Button(f_paths, text="Parcourir…", command=self.browse_src).grid(
+            row=row, column=2, padx=8
+        )
         row += 1
-        ttk.Label(f_paths, text="Dossier sortie :").grid(row=row, column=0, sticky="w", padx=8, pady=6)
-        ttk.Entry(f_paths, textvariable=self.var_dst, width=70).grid(row=row, column=1, sticky="we", padx=8)
-        ttk.Button(f_paths, text="Parcourir…", command=self.browse_dst).grid(row=row, column=2, padx=8)
+        ttk.Label(f_paths, text="Dossier sortie :").grid(
+            row=row, column=0, sticky="w", padx=8, pady=6
+        )
+        ttk.Entry(f_paths, textvariable=self.var_dst, width=70).grid(
+            row=row, column=1, sticky="we", padx=8
+        )
+        ttk.Button(f_paths, text="Parcourir…", command=self.browse_dst).grid(
+            row=row, column=2, padx=8
+        )
         f_paths.columnconfigure(1, weight=1)
 
         # Cadre Paramètres
@@ -93,8 +108,14 @@ class ImageOptimizerGUI(tk.Tk):
         fr_quality = ttk.Frame(f_opts)
         fr_quality.pack(fill="x", padx=8, pady=6)
         ttk.Label(fr_quality, text="Qualité JPEG :").pack(side="left")
-        s = ttk.Scale(fr_quality, from_=40, to=100, orient="horizontal",
-                      variable=self.var_quality, command=lambda e: self.update_quality_label())
+        s = ttk.Scale(
+            fr_quality,
+            from_=40,
+            to=100,
+            orient="horizontal",
+            variable=self.var_quality,
+            command=lambda e: self.update_quality_label(),
+        )
         s.pack(side="left", fill="x", expand=True, padx=10)
         self.lbl_quality = ttk.Label(fr_quality, text=f"{self.var_quality.get()}")
         self.lbl_quality.pack(side="left")
@@ -102,42 +123,65 @@ class ImageOptimizerGUI(tk.Tk):
         # Redimensionnement
         fr_resize = ttk.Frame(f_opts)
         fr_resize.pack(fill="x", padx=8, pady=6)
-        ttk.Checkbutton(fr_resize, text="Redimensionner (longue bordure max, en pixels) :",
-                        variable=self.var_resize).pack(side="left")
-        ttk.Entry(fr_resize, textvariable=self.var_max_side, width=8).pack(side="left", padx=10)
+        ttk.Checkbutton(
+            fr_resize,
+            text="Redimensionner (longue bordure max, en pixels) :",
+            variable=self.var_resize,
+        ).pack(side="left")
+        ttk.Entry(fr_resize, textvariable=self.var_max_side, width=8).pack(
+            side="left", padx=10
+        )
 
         # Conversion WebP
         fr_webp = ttk.Frame(f_opts)
         fr_webp.pack(fill="x", padx=8, pady=6)
-        ttk.Checkbutton(fr_webp, text="Convertir aussi en WebP", variable=self.var_convert_webp).pack(side="left")
-        ttk.Checkbutton(fr_webp, text="Conserver aussi la version JPEG",
-                        variable=self.var_keep_jpeg).pack(side="left", padx=16)
+        ttk.Checkbutton(
+            fr_webp, text="Convertir aussi en WebP", variable=self.var_convert_webp
+        ).pack(side="left")
+        ttk.Checkbutton(
+            fr_webp, text="Conserver aussi la version JPEG", variable=self.var_keep_jpeg
+        ).pack(side="left", padx=16)
 
         # Overwrite
-        ttk.Checkbutton(f_opts, text="Écraser les fichiers existants dans le dossier de sortie",
-                        variable=self.var_overwrite).pack(anchor="w", padx=8, pady=4)
+        ttk.Checkbutton(
+            f_opts,
+            text="Écraser les fichiers existants dans le dossier de sortie",
+            variable=self.var_overwrite,
+        ).pack(anchor="w", padx=8, pady=4)
 
         # Cadre Actions
         f_actions = ttk.Frame(self)
         f_actions.pack(fill="x", **pad)
-        self.btn_start = ttk.Button(f_actions, text="Démarrer", command=self.start_processing)
+        self.btn_start = ttk.Button(
+            f_actions, text="Démarrer", command=self.start_processing
+        )
         self.btn_start.pack(side="left", padx=4)
-        self.btn_stop = ttk.Button(f_actions, text="Annuler", command=self.cancel_processing, state="disabled")
+        self.btn_stop = ttk.Button(
+            f_actions, text="Annuler", command=self.cancel_processing, state="disabled"
+        )
         self.btn_stop.pack(side="left", padx=4)
-        self.btn_open_dst = ttk.Button(f_actions, text="Ouvrir dossier de sortie", command=self.open_dst)
+        self.btn_open_dst = ttk.Button(
+            f_actions, text="Ouvrir dossier de sortie", command=self.open_dst
+        )
         self.btn_open_dst.pack(side="left", padx=4)
 
         # Barre de progression
         f_prog = ttk.Frame(self)
         f_prog.pack(fill="x", padx=10, pady=(0, 8))
-        self.progress_bar = ttk.Progressbar(f_prog, orient="horizontal", mode="indeterminate")
+        self.progress_bar = ttk.Progressbar(
+            f_prog, orient="horizontal", mode="indeterminate"
+        )
         self.progress_bar.pack(fill="x", expand=True, side="left")
-        ttk.Label(f_prog, textvariable=self.var_progress_text, width=26, anchor="e").pack(side="left", padx=(8, 0))
+        ttk.Label(
+            f_prog, textvariable=self.var_progress_text, width=26, anchor="e"
+        ).pack(side="left", padx=(8, 0))
 
         # Journal
         f_log = ttk.LabelFrame(self, text="Journal")
         f_log.pack(fill="both", expand=True, padx=10, pady=8)
-        self.log_text = scrolledtext.ScrolledText(f_log, height=16, state="disabled", wrap="word")
+        self.log_text = scrolledtext.ScrolledText(
+            f_log, height=16, state="disabled", wrap="word"
+        )
         self.log_text.pack(fill="both", expand=True)
 
         self._log("Prêt.")
@@ -168,7 +212,7 @@ class ImageOptimizerGUI(tk.Tk):
         if not src or not dst:
             messagebox.showwarning(
                 "Champs manquants",
-                "Veuillez sélectionner les dossiers source et destination."
+                "Veuillez sélectionner les dossiers source et destination.",
             )
             return
 
@@ -204,14 +248,19 @@ class ImageOptimizerGUI(tk.Tk):
         """Ouvre le dossier de destination dans l'explorateur de fichiers."""
         dst = self.var_dst.get().strip()
         if not dst:
-            messagebox.showwarning("Aucun dossier", "Veuillez d'abord sélectionner un dossier de sortie.")
+            messagebox.showwarning(
+                "Aucun dossier", "Veuillez d'abord sélectionner un dossier de sortie."
+            )
             return
         if not os.path.isdir(dst):
-            messagebox.showwarning("Dossier introuvable", f"Le dossier n'existe pas encore : {dst}")
+            messagebox.showwarning(
+                "Dossier introuvable", f"Le dossier n'existe pas encore : {dst}"
+            )
             return
 
         import platform
         import subprocess
+
         system = platform.system()
         try:
             if system == "Windows":
@@ -289,8 +338,12 @@ class ImageOptimizerGUI(tk.Tk):
                         scale = max_side / max_current
                         new_width = int(width * scale)
                         new_height = int(height * scale)
-                        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                        self._log(f"  Redimensionné : {img_path.name} ({width}x{height} → {new_width}x{new_height})")
+                        img = img.resize(
+                            (new_width, new_height), Image.Resampling.LANCZOS
+                        )
+                        self._log(
+                            f"  Redimensionné : {img_path.name} ({width}x{height} → {new_width}x{new_height})"
+                        )
 
                 # Sauvegarder en JPEG
                 if not convert_webp or keep_jpeg:
@@ -302,7 +355,13 @@ class ImageOptimizerGUI(tk.Tk):
                         # Préserver les métadonnées EXIF si possible
                         exif_data = img.info.get("exif", None)
                         if exif_data:
-                            img.save(out_jpeg, "JPEG", quality=quality, optimize=True, exif=exif_data)
+                            img.save(
+                                out_jpeg,
+                                "JPEG",
+                                quality=quality,
+                                optimize=True,
+                                exif=exif_data,
+                            )
                         else:
                             img.save(out_jpeg, "JPEG", quality=quality, optimize=True)
                         self._log(f"  Traité : {out_jpeg}")
