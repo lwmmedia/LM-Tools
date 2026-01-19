@@ -27,6 +27,8 @@ Date : 2026
 
 import os
 import threading
+from pathlib import Path
+from datetime import datetime
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
@@ -41,19 +43,10 @@ except ImportError:
     )
     exit(1)
 
-# Titre de l'application
 APP_TITLE = "Optimiseur d'images JPG - GUI"
 SUPPORTED_EXTS = (".jpg", ".jpeg", ".JPG", ".JPEG")
 
-
 class ImageOptimizerGUI(tk.Tk):
-    """Classe principale pour l'interface graphique d'optimisation d'images.
-
-    Cette classe hérite de `tk.Tk` pour fournir une interface utilisateur.
-    Les utilisateurs peuvent configurer le traitement des images via des champs
-    et des cases à cocher.
-    """
-
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
@@ -68,9 +61,7 @@ class ImageOptimizerGUI(tk.Tk):
         self.var_max_side = tk.IntVar(value=1920)
         self.var_convert_webp = tk.BooleanVar(value=False)
         self.var_overwrite = tk.BooleanVar(value=False)
-        self.var_keep_jpeg = tk.BooleanVar(
-            value=True
-        )  # garder JPEG même si conversion WebP activée
+        self.var_keep_jpeg = tk.BooleanVar(value=True)  # garder JPEG même si conversion WebP activée
         self.var_progress_text = tk.StringVar(value="En attente…")
 
         self.stop_event = threading.Event()
@@ -78,12 +69,8 @@ class ImageOptimizerGUI(tk.Tk):
 
         self._build_ui()
 
+    # ---------------- UI ----------------
     def _build_ui(self):
-        """Construit l'interface utilisateur.
-
-        Cette méthode initialise les différents widgets tkinter dans
-        des cadres logiques (cadres pour les dossiers, paramètres, journal, etc.).
-        """
         pad = {"padx": 10, "pady": 8}
 
         # Cadre Dossiers
@@ -177,6 +164,77 @@ class ImageOptimizerGUI(tk.Tk):
         )
         self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
 
+        row = 0
+        ttk.Label(f_paths, text="Dossier source :").grid(row=row, column=0, sticky="w", padx=8, pady=6)
+        ttk.Entry(f_paths, textvariable=self.var_src, width=70).grid(row=row, column=1, sticky="we", padx=8)
+        ttk.Button(f_paths, text="Parcourir…", command=self.browse_src).grid(row=row, column=2, padx=8)
+        row += 1
+        ttk.Label(f_paths, text="Dossier sortie :").grid(row=row, column=0, sticky="w", padx=8, pady=6)
+        ttk.Entry(f_paths, textvariable=self.var_dst, width=70).grid(row=row, column=1, sticky="we", padx=8)
+        ttk.Button(f_paths, text="Parcourir…", command=self.browse_dst).grid(row=row, column=2, padx=8)
+        f_paths.columnconfigure(1, weight=1)
+
+        # Cadre Paramètres
+        f_opts = ttk.LabelFrame(self, text="Paramètres")
+        f_opts.pack(fill="x", **pad)
+
+        # Qualité
+        fr_quality = ttk.Frame(f_opts)
+        fr_quality.pack(fill="x", padx=8, pady=6)
+        ttk.Label(fr_quality, text="Qualité JPEG :").pack(side="left")
+        s = ttk.Scale(fr_quality, from_=40, to=100, orient="horizontal",
+                      variable=self.var_quality, command=lambda e: self.update_quality_label())
+        s.pack(side="left", fill="x", expand=True, padx=10)
+        self.lbl_quality = ttk.Label(fr_quality, text=f"{self.var_quality.get()}")
+        self.lbl_quality.pack(side="left")
+
+        # Redimensionnement
+        fr_resize = ttk.Frame(f_opts)
+        fr_resize.pack(fill="x", padx=8, pady=6)
+        ttk.Checkbutton(fr_resize, text="Redimensionner (longue bordure max, en pixels) :",
+                        variable=self.var_resize).pack(side="left")
+        ttk.Entry(fr_resize, textvariable=self.var_max_side, width=8).pack(side="left", padx=10)
+
+        # Conversion WebP
+        fr_webp = ttk.Frame(f_opts)
+        fr_webp.pack(fill="x", padx=8, pady=6)
+        ttk.Checkbutton(fr_webp, text="Convertir aussi en WebP", variable=self.var_convert_webp).pack(side="left")
+        ttk.Checkbutton(fr_webp, text="Conserver aussi la version JPEG",
+                        variable=self.var_keep_jpeg).pack(side="left", padx=16)
+
+        # Overwrite
+        ttk.Checkbutton(f_opts, text="Écraser les fichiers existants dans le dossier de sortie",
+                        variable=self.var_overwrite).pack(anchor="w", padx=8, pady=4)
+
+        # Cadre Actions
+        f_actions = ttk.Frame(self)
+        f_actions.pack(fill="x", **pad)
+        self.btn_start = ttk.Button(f_actions, text="Démarrer", command=self.start_processing)
+        self.btn_start.pack(side="left", padx=4)
+        self.btn_cancel = ttk.Button(f_actions, text="Annuler", command=self.cancel_processing, state="disabled")
+        self.btn_cancel.pack(side="left", padx=4)
+        self.btn_open_dst = ttk.Button(f_actions, text="Ouvrir dossier de sortie", command=self.open_dst)
+        self.btn_open_dst.pack(side="left", padx=4)
+
+        # Barre de progression
+        f_prog = ttk.Frame(self)
+        f_prog.pack(fill="x", padx=10, pady=(0, 8))
+        self.progress = ttk.Progressbar(f_prog, orient="horizontal", mode="determinate")
+        self.progress.pack(fill="x", expand=True, side="left")
+        ttk.Label(f_prog, textvariable=self.var_progress_text, width=26, anchor="e").pack(side="left", padx=(8, 0))
+
+        # Journal
+        f_log = ttk.LabelFrame(self, text="Journal")
+        f_log.pack(fill="both", expand=True, padx=10, pady=8)
+        self.txt_log = ScrolledText(f_log, height=16)
+        self.txt_log.pack(fill="both", expand=True)
+
+        self.log("Prêt.")
+
+    def update_quality_label(self):
+        self.lbl_quality.config(text=str(self.var_quality.get()))
+
+    # ------------- Actions -------------
     def browse_src(self):
         """Ouvre un dialogue pour sélectionner le dossier source d'images."""
         folder = filedialog.askdirectory(title="Sélectionner le dossier source")
